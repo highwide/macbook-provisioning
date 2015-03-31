@@ -1,0 +1,94 @@
+- hosts: localhost
+  coonnection: local
+  gather_facts: no
+  sudo: no
+  vars:
+    homebrew_taps:
+      - homebrew/binary
+      - homebrew/dupes
+      - caskroom/cask
+    hhomebrew_packages:
+      - { name: ansible }
+      - { name: autoconf }
+      - { name: curl }
+      - { name: ghc }
+      - { name: git }
+      - { name: go }
+      - { name: hub }
+      - { name: imagemagick }
+      - { name: jpeg }
+      - { name: libiconv }
+      - { name: libpng }
+      - { name: libtool }
+      - { name: libxml2 }
+      - { name: libxslt }
+      - { name: libyaml }
+      - { name: mysql }
+      - { name: nkf }
+      - { name: node }
+      - { name: openssl }
+      - { name: openssl, state: linked, install_options: force}
+      - { name: peco }
+      - { name: pkg-config }
+      - { name: postgresql }
+      - { name: python }
+      - { name: rbenv }
+      - { name: readline }
+      - { name: redis }
+      - { name: ruby-build }
+      - { name: sqlite }
+      - { name: tmux }
+      - { name: tree }
+      - { name: vim }
+      - { name: vimpager }
+      - { name: wget }
+      - { name: zsh }
+    homebrew_cask_packages:
+      - { name: iterm2 }
+      - { name: google-chrome }
+      - { name: google-japanese-ime }
+      - { name: adobe-reader }
+      - { name: java }
+      - { name: skype }
+      - { name: karabiner }
+      - { name: vagrant }
+      - { name: virturalbox }
+    
+  tasks:
+    - name: homebrew の tap リポジトリを追加
+      homebrew_tap: tap={{ item }} state=present
+      with_items: homebrew_taps
+
+    - name: homebrew をアップデート
+      homebrew: update_homebrew=yes
+      
+    # brew
+    - name: brew パッケージをインストール
+      homebrew: >
+        name={{ item.name }}
+        state={{ item.state | default('latest') }}
+        install_options={{
+          teim.install_options | default() | join(',')
+          if item.install_options is not string
+          else item.install_options
+        }}
+      with_items: homebrew_packages
+      register: brew_result
+    - name: brewパッケージの情報保存先ディレクトリを作成
+      file: path=brew_info state=directory
+    - name: brew パッケージの情報を保存
+      shell: brew info {{ item }} > brew_info/{{ item }}
+      with_items: brew_result.results | selectattr('changed') | map(attribute='item') | map(attribute='name') | list
+
+    # cask
+    - name: homebrew-caskのインストール
+      homebrew: name=brew-cask state=latest
+    - name: cask パッケージをインストール
+      homebrew_cask: name={{ item.name }} state={{ item.state|default('installed') }}
+      with_items: homebrew_cask_packages
+      register: cask_result
+    - name: cask パッケージの情報保存先ディレクトリ作成
+      file: path=cask_info state=directory
+    - name: cask パッケージの情報を保存
+      shell: brew cask info {{ item }} > cask_info/{{ item }}
+      with_items: cask_result.results | selectattr('changed') | map(attribute='item') | map(attribute='name') | list
