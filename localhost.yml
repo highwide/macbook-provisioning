@@ -1,5 +1,5 @@
 - hosts: localhost
-  coonnection: local
+  connection: local
   gather_facts: no
   sudo: no
   vars:
@@ -7,7 +7,8 @@
       - homebrew/binary
       - homebrew/dupes
       - caskroom/cask
-    hhomebrew_packages:
+      - sanemat/font
+    homebrew_packages:
       - { name: ansible }
       - { name: autoconf }
       - { name: curl }
@@ -45,6 +46,10 @@
       - { name: zsh }
     homebrew_cask_packages:
       - { name: iterm2 }
+      - { name: bartender }
+      - { name: bettertouchtool }
+      - { name: dropbox }
+      - { name: github }
       - { name: google-chrome }
       - { name: google-japanese-ime }
       - { name: adobe-reader }
@@ -52,7 +57,8 @@
       - { name: skype }
       - { name: karabiner }
       - { name: vagrant }
-      - { name: virturalbox }
+      - { name: virtualbox }
+      - { name: xtrafinder }
     
   tasks:
     - name: homebrew の tap リポジトリを追加
@@ -68,7 +74,7 @@
         name={{ item.name }}
         state={{ item.state | default('latest') }}
         install_options={{
-          teim.install_options | default() | join(',')
+          item.install_options | default() | join(',')
           if item.install_options is not string
           else item.install_options
         }}
@@ -92,3 +98,20 @@
     - name: cask パッケージの情報を保存
       shell: brew cask info {{ item }} > cask_info/{{ item }}
       with_items: cask_result.results | selectattr('changed') | map(attribute='item') | map(attribute='name') | list
+
+    # Ricty
+    - name: xquartz のインストール
+      homebrew_cask: name=xquartz
+    - name: fontforge のインストール
+      homebrew: name=fontforge
+    - name: Ricty のインストール
+      homebrew: name=ricty
+    - name: 生成されたフォントファイルをコピー
+      shell: cp -f $(brew --cellar ricty)/*/share/fonts/Ricty*.ttf ~/Library/Fonts/
+      args:
+        creates: ~/Library/Fonts/Ricty-Bold.ttf
+      notify: run fc-cache
+
+  handlers:
+    - name: run fc-cache
+      shell: fc-cache -vf
